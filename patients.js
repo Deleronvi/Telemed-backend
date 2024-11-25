@@ -4,6 +4,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('./db');
 const bcrypt = require('bcrypt');
+const password = 'password123';
+
+router.use((req, res, next) => {
+    console.log('Session middleware check:', req.session);
+    next();
+});
 
 // GET all patients
 router.get('/', async (req, res) => {
@@ -60,19 +66,25 @@ router.post('/register', async (req, res) => {
 // log in 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
-
+    console.log('Session before any action:', req.session); 
     try {
-        const [patient] = await db.query(`SELECT * FROM patients WHERE email = ?`, [email]);
-        if (!patient) {
+        const [patients] = await db.query(`SELECT * FROM patients WHERE email = ?`, [email]);
+        if (patients.length === 0) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
+        const patient = patients[0];
+        console.log('Password from request:', password); // Check the plain password
+console.log('Stored hash:', patient.password_hash); // Check the hash stored in the database
 
         const match = await bcrypt.compare(password, patient.password_hash);
         if (!match) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        
         req.session.patientId = patient.id;
+        console.log('session after setting:', req.session);
+
         res.json({ message: 'Logged in successfully' });
     } catch (err) {
         console.error(err);
@@ -156,6 +168,21 @@ router.delete('/delete', async (req, res) => {
         res.status(500).json({ error: 'Failed to delete account' });
     }
 });
+
+router.get('/test-session', (req, res) => {
+    try {
+        console.log('Session data:', req.session); // Log session details for debugging
+        if (req.session && req.session.patientId) {
+            res.json({ message: 'Session exists', session: req.session });
+        } else {
+            res.json({ message: 'No session available' });
+        }
+    } catch (error) {
+        console.error('Error in /test-session:', error);
+        res.status(500).json({ error: 'Something went wrong!' });
+    }
+});
+
 
 
 module.exports = router;

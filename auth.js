@@ -19,13 +19,19 @@ router.post('/login', async (req, res) => {
 
     try {
         // Query user from database
-        const [user] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        const [rows] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+        
+        const user = rows[0];
         console.log(user);
         if (!user) {
             return res.status(401).json({ message: 'Invalid email or password.' });
         }
 
+
         // Check password
+        console.log('Plain password:', password);
+console.log('Hashed password from DB:', user.password);
+
         const isPasswordMatch = await bcrypt.compare(password, user.password);
         if (!isPasswordMatch) {
             return res.status(401).json({ message: 'Invalid email or password.' });

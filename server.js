@@ -1,7 +1,7 @@
 // Importing required modules
 const express = require('express');
-const session = require('express-session'); // If you're using sessions
-const db = require('./db'); // Your database connection file
+const session = require('express-session'); 
+const db = require('./db'); 
 
 // Import your route files
 const patientsRouter = require('./patients');
@@ -12,16 +12,26 @@ const appointmentsRouter = require('./appointments');
 const app = express();
 const port = 3600;
 
-// Middleware for parsing JSON bodies
-app.use(express.json()); // To handle JSON request bodies
-
 // Middleware for handling sessions
 app.use(session({
     secret: 'deleron1', 
     resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false } // Set to true if using HTTPS
+    saveUninitialized: false,
+    cookie: { secure: false,
+        httpOnly: true
+     } 
 }));
+
+
+
+// Middleware for parsing JSON bodies
+app.use(express.json()); // To handle JSON request bodies
+app.use(express.urlencoded({ extended: true }));
+
+app.use((req, res, next) => {
+    console.log('Session at middleware:', req.session);
+    next();
+});
 
 
 // Use the routes
