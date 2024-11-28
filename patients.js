@@ -94,6 +94,7 @@ console.log('Stored hash:', patient.password_hash); // Check the hash stored in 
 
 // profile view
 router.get('/profile', (req, res) => {
+    console.log('Session data in profile route:', req.session);
     if (!req.session.patientId) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -139,7 +140,7 @@ router.post('/logout', (req, res) => {
 });
 
 //admin acess
-router.get('/', async (req, res) => {
+router.get('/admin', async (req, res) => {
     if (!req.session.admin) {
         return res.status(403).json({ error: 'Unauthorized access' });
     }
