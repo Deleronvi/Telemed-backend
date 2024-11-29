@@ -4,20 +4,34 @@ const express = require('express');
 const router = express.Router();
 const db = require('./db');
 
-// GET all appointments
+// Middleware to check if the user is authenticated
+router.use((req, res, next) => {
+    if (!req.session.patientId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+});
+
+// Get all appointments for the logged-in patient
 router.get('/', async (req, res) => {
+    const patientId = req.session.patientId;
+
     try {
-        const [rows] = await db.query('SELECT * FROM appointments');
-        res.json(rows);
+        const [appointments] = await db.query(
+            `SELECT * FROM appointments WHERE patient_id = ?`,
+            [patientId]
+        );
+        res.json(appointments);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch appointments' });
     }
 });
 
-// Book an appointment
+// Book a new appointment (using patient_id from session)
 router.post('/book', async (req, res) => {
-    const { patient_id, doctor_id, appointment_date, appointment_time } = req.body;
+    const { doctor_id, appointment_date, appointment_time } = req.body;
+    const patient_id = req.session.patientId; // use the patientId from the session
 
     try {
         await db.query(
@@ -32,35 +46,40 @@ router.post('/book', async (req, res) => {
     }
 });
 
-
-// Get all appointments for a logged-in patient
-router.get('/appointments', async (req, res) => {
-    if (!req.session.patientId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+// Get a specific appointment by ID (check patient authorization)
+router.get('/:appointmentId', async (req, res) => {
+    const patientId = req.session.patientId;
+    const appointmentId = req.params.appointmentId;
 
     try {
-        const [appointments] = await db.query(
-            `SELECT * FROM appointments WHERE patient_id = ?`,
-            [req.session.patientId]
+        const [appointment] = await db.query(
+            `SELECT * FROM appointments WHERE patient_id = ? AND id = ?`,
+            [patientId, appointmentId]
         );
-        res.json(appointments);
+        if (appointment.length === 0) {
+            return res.status(404).json({ error: 'Appointment not found' });
+        }
+        res.json(appointment[0]);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Failed to fetch appointments' });
+        res.status(500).json({ error: 'Failed to fetch appointment' });
     }
 });
 
-// Update an appointment
-router.put('/appointments/:id', async (req, res) => {
-    const appointmentId = req.params.id;
+// Update an appointment by ID (check patient authorization)
+router.put('/:appointmentId', async (req, res) => {
+    const patientId = req.session.patientId;
+    const appointmentId = req.params.appointmentId;
     const { appointment_date, appointment_time } = req.body;
 
     try {
-        await db.query(
-            `UPDATE appointments SET appointment_date = ?, appointment_time = ? WHERE id = ?`,
-            [appointment_date, appointment_time, appointmentId]
+        const result = await db.query(
+            `UPDATE appointments SET appointment_date = ?, appointment_time = ? WHERE id = ? AND patient_id = ?`,
+            [appointment_date, appointment_time, appointmentId, patientId]
         );
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Appointment not found or not authorized' });
+        }
         res.json({ message: 'Appointment rescheduled successfully' });
     } catch (err) {
         console.error(err);
@@ -68,20 +87,24 @@ router.put('/appointments/:id', async (req, res) => {
     }
 });
 
-
-// Cancel an appointment
-router.delete('/appointments/:id', async (req, res) => {
-    const appointmentId = req.params.id;
+// Cancel an appointment by ID (check patient authorization)
+router.delete('/:appointmentId', async (req, res) => {
+    const patientId = req.session.patientId;
+    const appointmentId = req.params.appointmentId;
 
     try {
-        await db.query(`UPDATE appointments SET status = 'canceled' WHERE id = ?`, [appointmentId]);
+        const result = await db.query(
+            `UPDATE appointments SET status = 'canceled' WHERE id = ? AND patient_id = ?`,
+            [appointmentId, patientId]
+        );
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Appointment not found or not authorized' });
+        }
         res.json({ message: 'Appointment canceled successfully' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to cancel appointment' });
     }
 });
-
-
 
 module.exports = router;
