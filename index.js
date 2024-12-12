@@ -29,6 +29,9 @@ app.use((req, res, next) => {
     console.log('Session middleware check:', req.session);
     next();
 })
+app.use(cors({
+    origin: 'http://127.0.0.1:5500',  // Allow only this origin
+}));
 
 app.use(express.json()); // Middleware to parse JSON bodies
 

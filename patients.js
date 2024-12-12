@@ -28,9 +28,9 @@ router.post('/', async (req, res) => {
 
     try {
         const result = await db.query(
-            `INSERT INTO patients (first_name, last_name, email, password_hash, phone, date_of_birth, gender, address)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [first_name, last_name, email, password_hash, phone, date_of_birth, gender, address]
+            `INSERT INTO patients (first_name, last_name, email, password_hash, phone, date_of_birth, gender)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [first_name, last_name, email, password_hash, phone, date_of_birth, gender]
         );
         res.json({ message: 'Patient added', patientId: result.insertId });
     } catch (err) {
@@ -43,22 +43,25 @@ router.post('/', async (req, res) => {
 
 // registration
 router.post('/register', async (req, res) => {
-    const { first_name, last_name, email, password, phone, date_of_birth, gender, address } = req.body;
+    const { first_name, last_name, email, password, phone, date_of_birth, gender} = req.body;
 
+    if (!password || typeof password !== 'string') {
+        return res.status(400).json({ error: 'Password must be a valid string' });
+    }
     try {
         // Hash the password
-        const hashedPassword = await bcrypt.hash(password, 10); // 10 is the salt rounds
+        const hashedPassword = await bcrypt.hash(password, 10); 
 
         // Insert patient into the database
         const result = await db.query(
-            `INSERT INTO patients (first_name, last_name, email, password_hash, phone, date_of_birth, gender, address)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [first_name, last_name, email, hashedPassword, phone, date_of_birth, gender, address]
+            `INSERT INTO patients (first_name, last_name, email, password_hash, phone, date_of_birth, gender)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [first_name, last_name, email, hashedPassword, phone, date_of_birth, gender]
         );
 
         res.status(201).json({ message: 'Patient registered successfully', patientId: result.insertId });
     } catch (err) {
-        console.error(err);
+        console.error('Error hashing password:', err)
         res.status(500).json({ error: 'Failed to register patient' });
     }
 });
