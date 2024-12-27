@@ -70,6 +70,9 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     console.log('Session before any action:', req.session); 
+    console.log('Email:', email);
+console.log('Password:', password);
+
     try {
         const [patients] = await db.query(`SELECT * FROM patients WHERE email = ?`, [email]);
         if (patients.length === 0) {
@@ -130,6 +133,26 @@ router.put('/profile', async (req, res) => {
         console.error(err);
         res.status(500).json({ error: 'Failed to update profile' });
     }
+});
+
+// Get appointments
+router.get('/appointments', (req, res) => {
+    if (!req.session.patientId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    db.query(
+        `SELECT id, doctor_name, appointment_date, appointment_time, status 
+         FROM appointments WHERE patient_id = ? AND status = 'Upcoming'`,
+        [req.session.patientId],
+        (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Failed to fetch appointments' });
+            }
+            res.json(results);
+        }
+    );
 });
 
 /// log out
