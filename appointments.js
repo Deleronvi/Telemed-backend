@@ -35,7 +35,7 @@ router.post('/book', async (req, res) => {
 
     try {
         await db.query(
-            `INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time, status)
+            `INSERT INTO appointments (patient_id, doctor_id, appointment_date, appointment_time)
              VALUES (?, ?, ?, ?, 'scheduled')`,
             [patient_id, doctor_id, appointment_date, appointment_time]
         );
