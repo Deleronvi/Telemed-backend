@@ -4,7 +4,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('./db');
 const bcrypt = require('bcrypt');
-const password = 'password123';
+
+router.use(express.json());
 
 router.use((req, res, next) => {
     console.log('Session middleware check:', req.session);
@@ -71,7 +72,9 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     console.log('Session before any action:', req.session); 
     console.log('Email:', email);
-console.log('Password:', password);
+    console.log("password from reques:", password)
+
+    console.log('Request body:', req.body);
 
     try {
         const [patients] = await db.query(`SELECT * FROM patients WHERE email = ?`, [email]);
@@ -82,6 +85,10 @@ console.log('Password:', password);
         console.log('Password from request:', password); // Check the plain password
 console.log('Stored hash:', patient.password_hash); // Check the hash stored in the database
 
+console.log("Password type:", typeof password); // Should log "string"
+console.log("Hash type:", typeof patient.password_hash); // Should log "string"
+
+
         const match = await bcrypt.compare(password, patient.password_hash);
         if (!match) {
             return res.status(401).json({ error: 'Invalid credentials' });
@@ -90,8 +97,13 @@ console.log('Stored hash:', patient.password_hash); // Check the hash stored in 
         
         req.session.patientId = patient.id;
         console.log('session after setting:', req.session);
+      
 
-        res.json({ message: 'Logged in successfully' });
+        res.json({ 
+            message: 'Logged in successfully',
+            name: patient.first_name,
+            email: patient.email
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to log in' });
