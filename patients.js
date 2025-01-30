@@ -51,8 +51,7 @@ router.post('/register', async (req, res) => {
     }
     try {
         // Hash the password
-        const hashedPassword = await bcrypt.hash(password, 10); 
-
+        const hashedPassword = await bcrypt.hash(password, 10);
         // Insert patient into the database
         const result = await db.query(
             `INSERT INTO patients (first_name, last_name, email, password_hash, phone, date_of_birth, gender)
@@ -60,7 +59,12 @@ router.post('/register', async (req, res) => {
             [first_name, last_name, email, hashedPassword, phone, date_of_birth, gender]
         );
 
-        res.status(201).json({ message: 'Patient registered successfully', patientId: result.insertId });
+        res.status(201).json({ message: 'Patient registered successfully', 
+            patientId: result.insertId,
+            name: first_name,
+            email: email
+         });
+       
     } catch (err) {
         console.error('Error hashing password:', err)
         res.status(500).json({ error: 'Failed to register patient' });
