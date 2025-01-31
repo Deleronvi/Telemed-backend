@@ -86,18 +86,30 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         const patient = patients[0];
-        console.log('Password from request:', password); // Check the plain password
-console.log('Stored hash:', patient.password_hash); // Check the hash stored in the database
-
-console.log("Password type:", typeof password); // Should log "string"
-console.log("Hash type:", typeof patient.password_hash); // Should log "string"
-
+       
 
         const match = await bcrypt.compare(password, patient.password_hash);
         if (!match) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
+  
+        // Fetch upcoming appointments
+        const [upcomingAppointments] = await db.query(
+            `SELECT doctor_id, appointment_date, appointment_time
+             FROM appointments 
+             WHERE patient_id = ? AND appointment_date >= CURDATE() 
+             ORDER BY appointment_date, appointment_time`,
+            [patient.id]
+        );
 
+        // Fetch appointment history
+        const [appointmentHistory] = await db.query(
+            `SELECT doctor_id, appointment_date, status 
+             FROM appointments 
+             WHERE patient_id = ? AND appointment_date < CURDATE() 
+             ORDER BY appointment_date DESC`, 
+            [patient.id]
+        );
         
         req.session.patientId = patient.id;
         console.log('session after setting:', req.session);
@@ -106,7 +118,11 @@ console.log("Hash type:", typeof patient.password_hash); // Should log "string"
         res.json({ 
             message: 'Logged in successfully',
             name: patient.first_name,
-            email: patient.email
+            email: patient.email,
+             appointments: {
+                upcoming: upcomingAppointments,
+                history: appointmentHistory,
+            }
         });
     } catch (err) {
         console.error(err);
@@ -157,19 +173,25 @@ router.get('/appointments', (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    db.query(
-        `SELECT id, doctor_name, appointment_date, appointment_time, status 
-         FROM appointments WHERE patient_id = ? AND status = 'Upcoming'`,
-        [req.session.patientId],
-        (err, results) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ error: 'Failed to fetch appointments' });
-            }
-            res.json(results);
+    const query = `
+        SELECT a.id, d.first_name AS doctor_first_name, d.last_name AS doctor_last_name,
+               a.appointment_date, a.appointment_time, a.status
+        FROM appointments a
+        JOIN doctors d ON a.doctor_id = d.id
+        WHERE a.patient_id = ? AND a.appointment_date >= CURDATE()
+        ORDER BY a.appointment_date, a.appointment_time
+    `;
+
+    db.query(query, [req.session.patientId], (err, results) => {
+        if (err) {
+            console.error('Error fetching appointments:', err);
+            return res.status(500).json({ error: 'Failed to fetch appointments' });
         }
-    );
+
+        res.json({ appointments: results });
+    });
 });
+
 
 /// log out
 router.post('/logout', (req, res) => {
