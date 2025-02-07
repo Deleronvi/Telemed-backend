@@ -7,12 +7,28 @@ const db = require('./db');
 const router = express.Router();
 
 // Secret key for JWT
-const JWT_SECRET = 'your_secret_key'; // Store securely in environment variables
+const JWT_SECRET = 'your_secret_key'; 
+function generateToken(patientId) {
+    return jwt.sign({ id: patientId }, JWT_SECRET, { expiresIn: '1h' });
+}
 
+function authenticateToken(req, res, next) {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ message: 'Access token missing.' });
+    }
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(403).json({ message: 'Invalid or expired token.' });
+        }
+        req.user = decoded;
+        next();
+    });
+}
 // User Login
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
-
+    const token = generateToken(req.body);
     if (!email || !password) {
         return res.status(400).json({ message: 'Email and password are required.' });
     }
@@ -46,9 +62,13 @@ console.log('Hashed password from DB:', user.password);
 
 
         // Generate JWT token
-        const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+      
+        console.log('Generated token:', token);
 
-        return res.status(200).json({ message: 'Login successful', token });
+        return res.status(200).json(
+            { 
+                message: 'Login successful', 
+                token: token, });
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: 'Internal server error' });
@@ -95,5 +115,6 @@ router.get('/verify', (req, res) => {
         return res.status(401).json({ message: 'Invalid or expired token.' });
     }
 });
-
+router.generateToken = generateToken;
+router.authenticateToken = authenticateToken;
 module.exports = router;

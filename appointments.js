@@ -5,12 +5,13 @@ const router = express.Router();
 const db = require('./db');
 
 // Middleware to check if the user is authenticated
-router.use((req, res, next) => {
-    if (!req.session.patientId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    next();
-});
+//router.use((req, res, next) => {
+  //  console.log('Session at Middlewares:', req.session);
+    //if (!req.session.patientId) {
+      //  return res.status(401).json({ error: 'Unauthorized' });
+    //}
+  ///  next();
+//});
 
 // Get all appointments for the logged-in patient
 router.get('/', async (req, res) => {

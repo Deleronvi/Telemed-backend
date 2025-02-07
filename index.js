@@ -6,14 +6,16 @@ const port = process.env.PORT || 3600;
 require('dotenv').config();
 const session = require('express-session'); 
 const db = require('./db'); 
+const cors = require('cors');
+const helmet = require('helmet');
+
 
 const patientsRoutes = require('./patients');
 const doctorsRoutes = require('./doctors');
 const appointmentsRoutes = require('./appointments');
 const adminRoutes = require('./admin');
 const authRoutes = require('./auth');
-const cors = require('cors');
-const helmet = require('helmet');
+
 
 // Middleware for handling sessions
 app.use(session({
@@ -22,7 +24,7 @@ app.use(session({
     saveUninitialized: false,
     cookie: { secure: false,
         httpOnly: true,
-        maxAge: 3600000
+        maxAge: 1000 * 60 * 60 * 24
      } 
 }));
 app.use((req, res, next) => {
@@ -30,7 +32,8 @@ app.use((req, res, next) => {
     next();
 })
 app.use(cors({
-    origin: 'http://127.0.0.1:5500',  // Allow only this origin
+   origin: ['http://127.0.0.1:5500', 'http://localhost:3600'],
+    credentials:true
 }));
 
 app.use(express.json()); // Middleware to parse JSON bodies
@@ -41,7 +44,7 @@ app.use('/doctors', doctorsRoutes);
 app.use('/appointments', appointmentsRoutes);
 app.use('/admin', adminRoutes);
 app.use('/auth', authRoutes);
-app.use(cors());
+
 app.use(helmet());
 
 app.get('/', (req, res) => {

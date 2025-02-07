@@ -1,9 +1,16 @@
 // routes/patients.js
 
 const express = require('express');
-const router = express.Router();
+const authRouter = require('./auth');
 const db = require('./db');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+
+
+const { generateToken } = authRouter;
+const router = express.Router();
+
+
 
 router.use(express.json());
 
@@ -112,11 +119,18 @@ router.post('/login', async (req, res) => {
         );
         
         req.session.patientId = patient.id;
-        console.log('session after setting:', req.session);
-      
+        req.session.save(err => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'Session failed to save' });
+            }
+            console.log('Session after saving:', req.session);
 
+            const token = generateToken(patient.id);
         res.json({ 
             message: 'Logged in successfully',
+            patientId: patient.id,
+            token,
             name: patient.first_name,
             email: patient.email,
              appointments: {
@@ -124,7 +138,8 @@ router.post('/login', async (req, res) => {
                 history: appointmentHistory,
             }
         });
-    } catch (err) {
+    }); 
+} catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to log in' });
     }
@@ -165,13 +180,18 @@ router.put('/profile', async (req, res) => {
         console.error(err);
         res.status(500).json({ error: 'Failed to update profile' });
     }
-});
+}); 
 
 // Get appointments
-router.get('/appointments', (req, res) => {
-    if (!req.session.patientId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
+router.get('/appointments/:id', (req, res) => {
+    const patientId = req.params.id;
+    console.log('Session data:', req.session);
+    console.log('Requested patientId:', patientId);
+    console.log('Session patientId:', req.session.patientId);
+
+    //if (!req.session.patientId) {
+      //  return res.status(401).json({ error: 'Unauthorized' });
+//    }
 
     const query = `
         SELECT a.id, d.first_name AS doctor_first_name, d.last_name AS doctor_last_name,
@@ -182,7 +202,7 @@ router.get('/appointments', (req, res) => {
         ORDER BY a.appointment_date, a.appointment_time
     `;
 
-    db.query(query, [req.session.patientId], (err, results) => {
+    db.query(query, [patientId], (err, results) => {
         if (err) {
             console.error('Error fetching appointments:', err);
             return res.status(500).json({ error: 'Failed to fetch appointments' });
